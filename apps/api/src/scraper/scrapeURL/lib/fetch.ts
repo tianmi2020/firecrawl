@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import { v4 as uuid } from "uuid";
 import * as Sentry from "@sentry/node";
-
+import { HttpProxyAgent } from "http-proxy-agent";
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
   logger: Logger;
@@ -16,6 +16,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
   requestId?: string;
   tryCount?: number;
   tryCooldown?: number;
+  proxy?: string; // 代理服务器地址
 };
 
 export async function robustFetch<
@@ -33,6 +34,7 @@ export async function robustFetch<
   requestId = uuid(),
   tryCount = 1,
   tryCooldown,
+  proxy = process.env.PROXY_SERVER || undefined, // 从环境变量读取代理
 }: RobustFetchParams<Schema>): Promise<Output> {
   const params = {
     url,
@@ -45,8 +47,10 @@ export async function robustFetch<
     ignoreFailure,
     tryCount,
     tryCooldown,
+    proxy,
   };
-
+  // 配置代理
+  const agent = proxy ? new HttpProxyAgent(proxy) : undefined;
   let request: Response;
   try {
     request = await fetch(url, {
@@ -70,7 +74,8 @@ export async function robustFetch<
               body: JSON.stringify(body),
             }
           : {}),
-    });
+      agent,
+    } as RequestInit & { agent?: typeof agent });
   } catch (error) {
     if (!ignoreFailure) {
       Sentry.captureException(error);

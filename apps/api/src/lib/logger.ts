@@ -5,7 +5,7 @@ configDotenv();
 
 const logFormat = winston.format.printf(
   (info) =>
-    `${info.timestamp} ${info.level} [${info.metadata.module ?? ""}:${info.metadata.method ?? ""}]: ${info.message} ${
+    `${info.timestamp} ${info.level} [${(info.metadata as any).module ?? ""}:${(info.metadata as any).method ?? ""}]: ${info.message} ${
       info.level.includes("error") || info.level.includes("warn")
         ? JSON.stringify(info.metadata, (_, value) => {
             if (value instanceof Error) {
